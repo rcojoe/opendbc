@@ -4,14 +4,16 @@
 
 // TODO: do checksum and counter checks. Add correct timestep, 0.1s for now.
 #define GM_COMMON_RX_CHECKS \
-    {.msg = {{0x184, 0, 8, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}, { 0 }, { 0 }}}, \
-    {.msg = {{0x34A, 0, 5, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}, { 0 }, { 0 }}}, \
-    {.msg = {{0x1E1, 0, 7, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}, { 0 }, { 0 }}}, \
-    {.msg = {{0xF1, 0, 6, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U},    /* Volt, Silverado, Acadia Denali */ \
-             {0xF1, 0, 7, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U},    /* Bolt EUV */ \
-             {0xF1, 0, 8, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}}},  /* Escalade */ \
-    {.msg = {{0x1C4, 0, 8, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}, { 0 }, { 0 }}}, \
-    {.msg = {{0xC9, 0, 8, .ignore_checksum = true, .ignore_counter = true, .frequency = 10U}, { 0 }, { 0 }}}, \
+    {.msg = {{0x184, 0, 8, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .frequency = 10U}, { 0 }, { 0 }}}, \
+    {.msg = {{0x34A, 0, 5, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .frequency = 10U}, { 0 }, { 0 }}}, \
+    {.msg = {{0x1E1, 0, 7, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .frequency = 10U}, { 0 }, { 0 }}}, \
+    {.msg = {{0x1C4, 0, 8, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .frequency = 10U}, { 0 }, { 0 }}}, \
+    {.msg = {{0xC9 , 0, 8, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .frequency = 10U}, { 0 }, { 0 }}}, \
+
+#define GM_ASCM_RX_CHECKS \
+    {.msg = {{0xBE, 0, 6, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .frequency = 10U},    /* Acadia */ \
+             {0xBE, 0, 7, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .frequency = 10U},    /* Chevy, Bolt EUV */ \
+             {0xBE, 0, 8, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .frequency = 10U}}},  /* Cadalac */ \
 
 static const LongitudinalLimits *gm_long_limits;
 
@@ -70,12 +72,10 @@ static void gm_rx_hook(const CANPacket_t *to_push) {
     }
     // Reference for brake pressed signals:
     // https://github.com/commaai/openpilot/blob/master/selfdrive/car/gm/carstate.py
-    //if ((addr == 0xBE) && (gm_hw == GM_ASCM)) {
-    //  brake_pressed = GET_BYTE(to_push, 1) >= 8U;
-    //}
-    if ((addr == 0xF1) && (gm_hw == GM_ASCM)) {
-      brake_pressed = GET_BIT(to_push, 1U);;
+    if ((addr == 0xBE) && (gm_hw == GM_ASCM)) {
+      brake_pressed = GET_BYTE(to_push, 1) >= 8U;
     }
+
     if ((addr == 0xC9) && (gm_hw == GM_CAM)) {
       brake_pressed = GET_BIT(to_push, 40U);
     }
@@ -163,6 +163,10 @@ static bool gm_tx_hook(const CANPacket_t *to_send) {
 static safety_config gm_init(uint16_t param) {
   const uint16_t GM_PARAM_HW_CAM = 1;
   const uint16_t GM_PARAM_EV = 4;
+  const uint16_t GM_PARAM_F1_CAN_BRAKE = 8;
+  bool F1_CAN_BRAKE = false;
+  F1_CAN_BRAKE = GET_FLAG(param, GM_PARAM_F1_CAN_BRAKE);
+//  printf("F1_CAN_BRAKE Value %d",F1_CAN_BRAKE);
 
   // common safety checks assume unscaled integer values
   static const int GM_GAS_TO_CAN = 8;  // 1 / 0.125
@@ -190,20 +194,28 @@ static safety_config gm_init(uint16_t param) {
   static const CanMsg GM_CAM_LONG_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x315, 0, 5, .check_relay = true}, {0x2CB, 0, 8, .check_relay = true}, {0x370, 0, 6, .check_relay = true},  // pt bus
                                                {0x184, 2, 8, .check_relay = true}};  // camera bus
 
+  static const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true},  // pt bus
+                                          {0x1E1, 2, 7, .check_relay = false}, {0x184, 2, 8, .check_relay = true}};  // camera bus
 
   static RxCheck gm_rx_checks[] = {
     GM_COMMON_RX_CHECKS
   };
 
-  static RxCheck gm_ev_rx_checks[] = {
+  static RxCheck gm_ascm_rx_checks[] = {
     GM_COMMON_RX_CHECKS
-    {.msg = {{0xBD, 0, 7, .ignore_checksum = true, .ignore_counter = true, .frequency = 40U}, { 0 }, { 0 }}},
+    GM_ASCM_RX_CHECKS
   };
 
-  static const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true},  // pt bus
-                                          {0x1E1, 2, 7, .check_relay = false}, {0x184, 2, 8, .check_relay = true}};  // camera bus
+  static RxCheck gm_ev_rx_checks[] = {
+    GM_COMMON_RX_CHECKS
+    GM_ASCM_RX_CHECKS
+    {.msg = {{0xBD, 0, 7, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true, .frequency = 40U}, { 0 }, { 0 }}},
+  };
 
   gm_hw = GET_FLAG(param, GM_PARAM_HW_CAM) ? GM_CAM : GM_ASCM;
+//  printf("Gm hw %d",gm_hw);
+//  printf("GM params %d", param);
+  
   if (gm_hw == GM_ASCM) {
     gm_long_limits = &GM_ASCM_LONG_LIMITS;
   } else if (gm_hw == GM_CAM) {
@@ -220,13 +232,23 @@ static safety_config gm_init(uint16_t param) {
   gm_pcm_cruise = (gm_hw == GM_CAM) && !gm_cam_long;
 
   safety_config ret;
+  
+  if (F1_CAN_BRAKE){
+       SET_RX_CHECKS(gm_rx_checks, ret);
+  } else {
+       SET_RX_CHECKS(gm_ascm_rx_checks, ret);
+  }
   if (gm_hw == GM_CAM) {
     // FIXME: cppcheck thinks that gm_cam_long is always false. This is not true
     // if ALLOW_DEBUG is defined but cppcheck is run without ALLOW_DEBUG
     // cppcheck-suppress knownConditionTrueFalse
-    ret = gm_cam_long ? BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_LONG_TX_MSGS) : BUILD_SAFETY_CFG(gm_rx_checks, GM_CAM_TX_MSGS);
+    if (gm_cam_long) {
+      SET_TX_MSGS(GM_CAM_LONG_TX_MSGS, ret);
+    } else {
+      SET_TX_MSGS(GM_CAM_TX_MSGS, ret);
+    }
   } else {
-    ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_ASCM_TX_MSGS);
+    SET_TX_MSGS(GM_ASCM_TX_MSGS, ret);
   }
 
   const bool gm_ev = GET_FLAG(param, GM_PARAM_EV);
