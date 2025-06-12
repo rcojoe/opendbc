@@ -215,9 +215,9 @@ class AccState:
 
 class CanBus:
   POWERTRAIN = 0
-  OBSTACLE = 1
+  OBSTACLE = 3
   CAMERA = 2
-  CHASSIS = 2
+  CHASSIS = 3
   LOOPBACK = 128
   DROPPED = 192
 
