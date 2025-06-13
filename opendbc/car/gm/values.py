@@ -214,10 +214,10 @@ class AccState:
   STANDSTILL = 4
 
 class CanBus:
-  POWERTRAIN = 3
-  OBSTACLE = 2
+  POWERTRAIN = 1
+  OBSTACLE = 1
   CAMERA = 2
-  CHASSIS = 2
+  CHASSIS = 1
   LOOPBACK = 128
   DROPPED = 192
 
@@ -264,7 +264,7 @@ FW_QUERY_CONFIG = FwQueryConfig(
       [StdQueries.SHORT_TESTER_PRESENT_REQUEST, req],
       [StdQueries.SHORT_TESTER_PRESENT_RESPONSE, GM_FW_RESPONSE + bytes([req[-1]])],
       rx_offset=GM_RX_OFFSET,
-      bus=3,
+      bus=0,
       logging=True,
     ),
   ]],
