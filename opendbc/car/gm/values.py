@@ -264,7 +264,7 @@ FW_QUERY_CONFIG = FwQueryConfig(
       [StdQueries.SHORT_TESTER_PRESENT_REQUEST, req],
       [StdQueries.SHORT_TESTER_PRESENT_RESPONSE, GM_FW_RESPONSE + bytes([req[-1]])],
       rx_offset=GM_RX_OFFSET,
-      bus=0,
+      bus=1,
       logging=True,
     ),
   ]],
