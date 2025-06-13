@@ -214,10 +214,10 @@ class AccState:
   STANDSTILL = 4
 
 class CanBus:
-  POWERTRAIN = 1
+  POWERTRAIN = 0
   OBSTACLE = 1
   CAMERA = 2
-  CHASSIS = 1
+  CHASSIS = 2
   LOOPBACK = 128
   DROPPED = 192
 
