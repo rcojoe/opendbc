@@ -125,7 +125,6 @@ class CarInterface(CarInterfaceBase):
         ret.alphaLongitudinalAvailable = False
         ret.openpilotLongitudinalControl = True
         ret.safetyConfigs[0].safetyParam |= GMSafetyFlags.HW_CAM_LONG.value                                                                   
-        ret.pcmCruise = True
         ret.pcmCruise = False
         ret.minEnableSpeed = 0                              
         #ret.minEnableSpeed = -1.  # engage speed is decided by PCM
