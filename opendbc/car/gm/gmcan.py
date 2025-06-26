@@ -57,8 +57,10 @@ def create_gas_regen_command(packer, bus, throttle, idx, enabled, at_full_stop):
     "GasRegenCmdActive": enabled,
     "RollingCounter": idx,
     "GasRegenCmd": throttle,
-    "GasRegenFullStopActive": at_full_stop,
-    "GasRegenAccType": 1,
+    #"GasRegenFullStopActive": at_full_stop,
+    #"GasRegenAccType": 1,
+    "GasRegenFullStopActive": 0,
+    "GasRegenAccType": 0,
   }
 
   dat = packer.make_can_msg("ASCMGasRegenCmd", bus, values)[1]
@@ -107,7 +109,7 @@ def create_acc_dashboard_command(packer, bus, enabled, target_speed_kph, hud_con
     "ACCAlwaysOne": 1,
     "ACCResumeButton": 0,
     "ACCSpeedSetpoint": target_speed,
-    "ACCGapLevel": hud_control.leadDistanceBars * enabled,  # 3 "far", 0 "inactive"
+    "ACCGapLevel": hud_control.leadDistanceBars #* enabled,  # 3 "far", 0 "inactive"
     "ACCCmdActive": enabled,
     "ACCAlwaysOne2": 1,
     "ACCLeadCar": hud_control.leadVisible,
