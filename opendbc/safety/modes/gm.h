@@ -178,7 +178,7 @@ static safety_config gm_init(uint16_t param) {
     .max_brake = 400,
   };
 
-  static const CanMsg GM_ASCM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x409, 0, 7, .check_relay = false}, {0x40A, 0, 7, .check_relay = false}, {0x2CB, 0, 8, .check_relay = true}, {0x370, 0, 6, .check_relay = false},  // pt bus
+  static const CanMsg GM_ASCM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x409, 0, 7, .check_relay = false}, {0x40A, 0, 7, .check_relay = false}, {0x2CB, 0, 8, .check_relay = false}, {0x370, 0, 6, .check_relay = false},  // pt bus
                                            {0xA1, 1, 7, .check_relay = false}, {0x306, 1, 8, .check_relay = false}, {0x308, 1, 7, .check_relay = false}, {0x310, 1, 2, .check_relay = false},   // obs bus
                                            {0x315, 2, 5, .check_relay = false}};  // ch bus
 
@@ -225,10 +225,10 @@ static safety_config gm_init(uint16_t param) {
 
   bool gm_cam_long = false;
 
-#ifdef ALLOW_DEBUG
+
   const uint16_t GM_PARAM_HW_CAM_LONG = 2;
   gm_cam_long = GET_FLAG(param, GM_PARAM_HW_CAM_LONG);
-#endif
+
   gm_pcm_cruise = (gm_hw == GM_CAM) && !gm_cam_long;
 
   safety_config ret;
