@@ -8,10 +8,10 @@ from opendbc.safety.tests.libsafety import libsafety_py
 from opendbc.safety.tests.test_defaults import TestDefaultRxHookBase
 
 GM_CAMERA_DIAG_ADDR = 0x24B
-
+GM_RADAR_DIAG_ADDR = 0x25B
 
 class TestElm327(TestDefaultRxHookBase):
-  TX_MSGS = [[addr, bus] for addr in [GM_CAMERA_DIAG_ADDR, *range(0x600, 0x800),
+  TX_MSGS = [[addr, bus] for addr in [GM_CAMERA_DIAG_ADDR,GM_RADAR_DIAG_ADDR, *range(0x600, 0x800),
                                       *range(0x18DA00F1, 0x18DB00F1, 0x100),  # 29-bit UDS physical addressing
                                       *[0x18DB33F1],  # 29-bit UDS functional address
                                       ] for bus in range(4)]
@@ -39,6 +39,7 @@ class TestElm327(TestDefaultRxHookBase):
     for byte in range(0xff):
       should_tx = (byte >> 4) <= 3
       self.assertEqual(should_tx, self._tx(common.make_msg(0, GM_CAMERA_DIAG_ADDR, dat=bytes([byte] * 8))))
+      self.assertEqual(should_tx, self._tx(common.make_msg(0, GM_RADAR_DIAG_ADDR, dat=bytes([byte] * 8))))
 
   def test_tx_hook_on_wrong_safety_mode(self):
     # No point, since we allow many diagnostic addresses

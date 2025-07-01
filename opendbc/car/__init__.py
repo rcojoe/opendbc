@@ -211,11 +211,12 @@ def get_friction(lateral_accel_error: float, lateral_accel_deadzone: float, fric
 
 
 def make_tester_present_msg(addr, bus, subaddr=None, suppress_response=False):
-  dat = [0x02, uds.SERVICE_TYPE.TESTER_PRESENT]
+  dat = [uds.SERVICE_TYPE.TESTER_PRESENT]
+  if suppress_response:  
+    dat.append(0x80)  # sub-function
+  dat.insert(0,len(dat))
   if subaddr is not None:
     dat.insert(0, subaddr)
-  dat.append(0x80 if suppress_response else 0x0)  # sub-function
-
   dat.extend([0x0] * (8 - len(dat)))
   return CanData(addr, bytes(dat), bus)
 

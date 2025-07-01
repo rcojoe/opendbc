@@ -5,6 +5,7 @@
 
 static bool elm327_tx_hook(const CANPacket_t *to_send) {
   const int GM_CAMERA_DIAG_ADDR = 0x24B;
+  const int GM_RADAR_DIAG_ADDR = 0x25B;
 
   bool tx = true;
   int addr = GET_ADDR(to_send);
@@ -19,12 +20,12 @@ static bool elm327_tx_hook(const CANPacket_t *to_send) {
   // Check valid 11 bit send addresses for ISO 15765-4
   if ((addr != 0x18DB33F1) && ((addr & 0x1FFF00FF) != 0x18DA00F1) &&
       ((addr & 0x1FFFFF00) != 0x600) && ((addr & 0x1FFFFF00) != 0x700) &&
-      (addr != GM_CAMERA_DIAG_ADDR)) {
+      (addr != GM_CAMERA_DIAG_ADDR) && (addr !=GM_RADAR_DIAG_ADDR)) {
     tx = false;
   }
 
   // GM camera uses non-standard diagnostic address, this has no control message address collisions
-  if ((addr == GM_CAMERA_DIAG_ADDR) && (len == 8)) {
+  if (((addr == GM_CAMERA_DIAG_ADDR) || (addr == GM_RADAR_DIAG_ADDR)) && (len == 8)) {
     // Only allow known frame types for ISO 15765-2
     if ((GET_BYTE(to_send, 0) & 0xF0U) > 0x30U) {
       tx = false;

@@ -268,7 +268,7 @@ FW_QUERY_CONFIG = FwQueryConfig(
       logging=True,
     ),
   ]],
-  extra_ecus=[(Ecu.fwdCamera, 0x24b, None)],
+  extra_ecus=[(Ecu.fwdCamera, 0x24b, None), (Ecu.fwdRadar, 0x25b, None)],
 )
 
 # TODO: detect most of these sets live

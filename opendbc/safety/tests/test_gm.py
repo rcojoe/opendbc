@@ -76,7 +76,7 @@ class TestGmSafetyBase(common.PandaCarSafetyTest, common.DriverTorqueSteeringSaf
   # Ensures ASCM is off on ASCM cars, and relay is not malfunctioning for camera-ACC cars
   RELAY_MALFUNCTION_ADDRS = {0: (0x180,), 2: (0x184,)}  # ASCMLKASteeringCmd, PSCMStatus
   BUTTONS_BUS = 0  # rx or tx
-  BRAKE_BUS = 0  # tx only
+  BRAKE_BUS = 1  # tx only
 
   MAX_RATE_UP = 10
   MAX_RATE_DOWN = 15
@@ -206,12 +206,13 @@ class TestGmCameraEVSafety(TestGmCameraSafety, TestGmEVSafetyBase):
 
 
 class TestGmCameraLongitudinalSafety(GmLongitudinalBase, TestGmCameraSafetyBase):
-  TX_MSGS = [[0x180, 0], [0x315, 0], [0x2CB, 0], [0x370, 0],  # pt bus
+  TX_MSGS = [[0x180, 0], [0x315, 1], [0x2CB, 0], [0x370, 0],  # pt bus
              [0x184, 2]]  # camera bus
-  FWD_BLACKLISTED_ADDRS = {2: [0x180, 0x2CB, 0x370, 0x315], 0: [0x184]}  # block LKAS, ACC messages and PSCMStatus
-  RELAY_MALFUNCTION_ADDRS = {0: (0x180, 0x2CB, 0x370, 0x315), 2: (0x184,)}
+  FWD_BLACKLISTED_ADDRS = {2: [0x180, 0x2CB, 0x370], 0: [0x184]}  # block LKAS, ACC messages and PSCMStatus
+  RELAY_MALFUNCTION_ADDRS = {0: (0x180, 0x2CB, 0x370), 2: (0x184,)}
   BUTTONS_BUS = 0  # rx only
-
+  BRAKE_BUS = 1
+  CAMERA_BUS = 0
   MAX_GAS = 1346
   MIN_GAS = -540  # maximum regen
   INACTIVE_GAS = -500
@@ -223,6 +224,19 @@ class TestGmCameraLongitudinalSafety(GmLongitudinalBase, TestGmCameraSafetyBase)
     self.safety.set_safety_hooks(CarParams.SafetyModel.gm, GMSafetyFlags.HW_CAM | GMSafetyFlags.HW_CAM_LONG | self.EXTRA_SAFETY_PARAM)
     self.safety.init_tests()
 
+  def test_diagnostics(self):
+    tester_present = libsafety_py.make_CANPacket(0x25b, self.BRAKE_BUS,     b"\x01\x3E\x00\x00\x00\x00\x00\x00")
+    self.assertTrue(self._tx(tester_present))
+
+    not_tester_present = libsafety_py.make_CANPacket(0x25b, self.BRAKE_BUS, b"\x03\xAA\xAA\x00\x00\x00\x00\x00")
+    self.assertFalse(self._tx(not_tester_present))
+    
+    communications_stop_allowed = libsafety_py.make_CANPacket(0x25b, self.BRAKE_BUS,         b"\x01\x28\x00\x00\x00\x00\x00\x00")
+    self.assertTrue(self._tx(communications_stop_allowed))
+
+
+    communications_stop_not_allowed = libsafety_py.make_CANPacket(0x25b, self.BRAKE_BUS,     b"\x03\xAA\xAA\x00\x00\x00\x00\x00")
+    self.assertFalse(self._tx(communications_stop_not_allowed)) 
 
 class TestGmCameraLongitudinalEVSafety(TestGmCameraLongitudinalSafety, TestGmEVSafetyBase):
   pass

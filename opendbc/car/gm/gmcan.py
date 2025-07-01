@@ -109,7 +109,7 @@ def create_acc_dashboard_command(packer, bus, enabled, target_speed_kph, hud_con
     "ACCAlwaysOne": 1,
     "ACCResumeButton": 0,
     "ACCSpeedSetpoint": target_speed,
-    "ACCGapLevel": hud_control.leadDistanceBars #* enabled,  # 3 "far", 0 "inactive"
+    "ACCGapLevel": hud_control.leadDistanceBars, #* enabled,  # 3 "far", 0 "inactive"
     "ACCCmdActive": enabled,
     "ACCAlwaysOne2": 1,
     "ACCLeadCar": hud_control.leadVisible,
@@ -171,3 +171,9 @@ def create_lka_icon_command(bus, active, critical, steer):
   else:
     dat = b"\x00\x00\x00"
   return CanData(0x104c006c, dat, bus)
+  
+def make_disable_communication_msg(addr, bus):
+  dat = [0x28] #0x28 [uds.SERVICE_TYPE.COMMUNICATION_CONTROL]
+  dat.insert(0,len(dat))
+  dat.extend([0x0] * (8 - len(dat)))
+  return CanData(addr, bytes(dat), bus)

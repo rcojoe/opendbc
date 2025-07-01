@@ -156,6 +156,13 @@ static bool gm_tx_hook(const CANPacket_t *to_send) {
       tx = false;
     }
   }
+  // UDS: Only tester present ("\x01\x3E\x00\x00\x00\x00\x00\x00") or ("\x01\x28) allowed on diagnostics address
+  if (addr == 0x25b) {
+    bool invalid_uds_msg = (GET_BYTES(to_send, 0, 4) != 0x00003E01U) && (GET_BYTES(to_send, 0, 4) != 0x00002801U); // || (GET_BYTES(to_send, 4, 4) != 0x0U);
+    if (invalid_uds_msg) {
+      tx = false;
+    }
+  }  
 
   return tx;
 }
@@ -178,7 +185,7 @@ static safety_config gm_init(uint16_t param) {
     .max_brake = 400,
   };
 
-  static const CanMsg GM_ASCM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x409, 0, 7, .check_relay = false}, {0x40A, 0, 7, .check_relay = false}, {0x2CB, 0, 8, .check_relay = false}, {0x370, 0, 6, .check_relay = false},  // pt bus
+  static const CanMsg GM_ASCM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x409, 0, 7, .check_relay = false}, {0x40A, 0, 7, .check_relay = false}, {0x2CB, 0, 8, .check_relay = true}, {0x370, 0, 6, .check_relay = false},  // pt bus
                                            {0xA1, 1, 7, .check_relay = false}, {0x306, 1, 8, .check_relay = false}, {0x308, 1, 7, .check_relay = false}, {0x310, 1, 2, .check_relay = false},   // obs bus
                                            {0x315, 2, 5, .check_relay = false}};  // ch bus
 
@@ -191,7 +198,9 @@ static safety_config gm_init(uint16_t param) {
   };
 
   // block PSCMStatus (0x184); forwarded through openpilot to hide an alert from the camera
-  static const CanMsg GM_CAM_LONG_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x315, 0, 5, .check_relay = true}, {0x2CB, 0, 8, .check_relay = true}, {0x370, 0, 6, .check_relay = true},  // pt bus
+  static const CanMsg GM_CAM_LONG_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true}, {0x315, 1, 5, .check_relay = false, .disable_static_blocking = true}, {0x2CB, 0, 8, .check_relay = true}, {0x370, 0, 6, .check_relay = true},  // pt bus
+                                               {0x25b, 0, 8, .check_relay = false},   /* PT radar diagnostic address */ 
+											   {0x25b, 1, 8, .check_relay = false},   /* Chassis radar diagnostic address */ 
                                                {0x184, 2, 8, .check_relay = true}};  // camera bus
 
   static const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true},  // pt bus
