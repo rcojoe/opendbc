@@ -105,7 +105,7 @@ class CarController(CarControllerBase):
         # TODO: can we always check the longControlState?
         if self.CP.networkLocation == NetworkLocation.fwdCamera:
           at_full_stop = at_full_stop and stopping
-          friction_brake_bus = CanBus.OBSTACLE
+          friction_brake_bus = CanBus.POWERTRAIN
         if True: #!CC.enabled:
           # GasRegenCmdActive needs to be 1 to avoid cruise faults. It describes the ACC state, not actuation
           can_sends.append(gmcan.create_gas_regen_command(self.packer_pt, CanBus.POWERTRAIN, self.apply_gas, idx, CC.enabled, at_full_stop))
@@ -153,11 +153,11 @@ class CarController(CarControllerBase):
         can_sends.append(gmcan.create_pscm_status(self.packer_pt, CanBus.CAMERA, CS.pscm_status))
 
     # keep radar disabled
-    if self.frame % 2000 == 0 :  # and self.CP.networkLocation == NetworkLocation.fwdCamera:
+    if self.frame % 200 == 0 :  # and self.CP.networkLocation == NetworkLocation.fwdCamera:
       can_sends.append(make_tester_present_msg(0x25b, 0))
       can_sends.append(make_tester_present_msg(0x25b, 1))
 
-    if self.frame % 1750 == 0 :  # and self.CP.networkLocation == NetworkLocation.fwdCamera:
+    if self.frame % 375 == 0 :  # and self.CP.networkLocation == NetworkLocation.fwdCamera:
       can_sends.append(gmcan.make_disable_communication_msg(0x25b, 0))
       can_sends.append(gmcan.make_disable_communication_msg(0x25b, 1))
       
