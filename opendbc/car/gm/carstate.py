@@ -91,7 +91,7 @@ class CarState(CarStateBase):
       if self.CP.carFingerprint in F1_CAN_BRAKE:
         ret.brakePressed = pt_cp.vl["EBCMBrakePedalPosition"]["BrakePedalPosition"] >= 8
       else:
-        ret.brakePressed = pt_cp.vl["ECMAcceleratorPos"]["BrakePedalPos"] >= 8     
+        ret.brakePressed = pt_cp.vl["ECMAcceleratorPos"]["BrakePedalPos"] >= 8
 
     # Regen braking is braking
     if self.CP.transmissionType == TransmissionType.direct:
