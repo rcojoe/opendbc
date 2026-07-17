@@ -3,15 +3,18 @@
 #include "opendbc/safety/declarations.h"
 
 // TODO: do checksum and counter checks. Add correct timestep, 0.1s for now.
+// Yukon doesn't broadcast 0xBE (or not in an expected size) on that bus, and the RX check was failing and blocking engagement, so split it.
 #define GM_COMMON_RX_CHECKS \
     {.msg = {{0x184, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
     {.msg = {{0x34A, 0, 5, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
     {.msg = {{0x1E1, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
+    {.msg = {{0x1C4, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
+    {.msg = {{0xC9 , 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
+
+#define GM_ASCM_RX_CHECKS \
     {.msg = {{0xBE, 0, 6, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},    /* Volt, Silverado, Acadia Denali */ \
              {0xBE, 0, 7, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true},    /* Bolt EUV */ \
              {0xBE, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}}},  /* Escalade */ \
-    {.msg = {{0x1C4, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
-    {.msg = {{0xC9, 0, 8, 10U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}}, \
 
 static const LongitudinalLimits *gm_long_limits;
 
@@ -28,6 +31,7 @@ typedef enum {
 } GmHardware;
 static GmHardware gm_hw = GM_ASCM;
 static bool gm_pcm_cruise = false;
+static bool gm_f1_can_brake = false;
 
 static void gm_rx_hook(const CANPacket_t *msg) {
   const int GM_STANDSTILL_THRSLD = 10;  // 0.311kph
@@ -65,10 +69,13 @@ static void gm_rx_hook(const CANPacket_t *msg) {
 
       cruise_button_prev = button;
     }
-
     // Reference for brake pressed signals:
     // https://github.com/commaai/openpilot/blob/master/selfdrive/car/gm/carstate.py
-    if ((msg->addr == 0xBEU) && (gm_hw == GM_ASCM)) {
+    if ((msg->addr == 0xBEU) && (gm_hw == GM_ASCM) && !gm_f1_can_brake) {
+      brake_pressed = msg->data[1] >= 8U;
+    }
+
+    if ((msg->addr == 0xF1U) && gm_f1_can_brake) {
       brake_pressed = msg->data[1] >= 8U;
     }
 
@@ -158,6 +165,8 @@ static bool gm_tx_hook(const CANPacket_t *msg) {
 static safety_config gm_init(uint16_t param) {
   const uint16_t GM_PARAM_HW_CAM = 1;
   const uint16_t GM_PARAM_EV = 4;
+  const uint16_t GM_PARAM_F1_CAN_BRAKE = 8;
+  gm_f1_can_brake = GET_FLAG(param, GM_PARAM_F1_CAN_BRAKE);
 
   // common safety checks assume unscaled integer values
   static const int GM_GAS_TO_CAN = 8;  // 1 / 0.125
@@ -187,21 +196,29 @@ static safety_config gm_init(uint16_t param) {
                                                {0x184, 2, 8, .check_relay = true}};  // camera bus
 #endif
 
+  static const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true},  // pt bus
+                                          {0x1E1, 2, 7, .check_relay = false}, {0x184, 2, 8, .check_relay = true}};  // camera bus
 
   static RxCheck gm_rx_checks[] = {
     GM_COMMON_RX_CHECKS
   };
 
+  static RxCheck gm_ascm_rx_checks[] = {
+    GM_COMMON_RX_CHECKS
+    GM_ASCM_RX_CHECKS
+  };
+
   static RxCheck gm_ev_rx_checks[] = {
     GM_COMMON_RX_CHECKS
+    GM_ASCM_RX_CHECKS
     {.msg = {{0xBD, 0, 7, 40U, .ignore_checksum = true, .ignore_counter = true, .ignore_quality_flag = true}, { 0 }, { 0 }}},
   };
 
-  static const CanMsg GM_CAM_TX_MSGS[] = {{0x180, 0, 4, .check_relay = true},  // pt bus
-                                          {0x1E1, 2, 7, .check_relay = false}, {0x184, 2, 8, .check_relay = true}};  // camera bus
-
-  if (GET_FLAG(param, GM_PARAM_HW_CAM)) {
-    gm_hw = GM_CAM;
+  gm_hw = GET_FLAG(param, GM_PARAM_HW_CAM) ? GM_CAM : GM_ASCM;
+  
+  if (gm_hw == GM_ASCM) {
+    gm_long_limits = &GM_ASCM_LONG_LIMITS;
+  } else if (gm_hw == GM_CAM) {
     gm_long_limits = &GM_CAM_LONG_LIMITS;
   } else {
     gm_hw = GM_ASCM;
@@ -222,14 +239,16 @@ static safety_config gm_init(uint16_t param) {
     }
 #endif
   } else {
-    ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_ASCM_TX_MSGS);
+    if (gm_f1_can_brake) {
+      ret = BUILD_SAFETY_CFG(gm_rx_checks, GM_ASCM_TX_MSGS);
+    } else {
+      ret = BUILD_SAFETY_CFG(gm_ascm_rx_checks, GM_ASCM_TX_MSGS);
+    }
   }
-
   const bool gm_ev = GET_FLAG(param, GM_PARAM_EV);
   if (gm_ev) {
     SET_RX_CHECKS(gm_ev_rx_checks, ret);
-  }
-
+  }  
   // ASCM does not forward any messages
   if (gm_hw == GM_ASCM) {
     ret.disable_forwarding = true;
